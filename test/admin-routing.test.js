@@ -10,23 +10,23 @@ test("admin page uses one protected namespace", () => {
 });
 
 test("all canonical admin APIs rewrite to existing handlers", () => {
-  for (const [method, pathname, internal] of [
-    ["GET", "/admin/api/queue", "/api/admin/queue"],
-    ["GET", "/admin/api/terms", "/api/admin/terms"],
-    ["POST", "/admin/api/review/7", "/api/admin/review/7"],
-    ["PUT", "/admin/api/terms/7", "/api/admin/terms/7"],
-    ["POST", "/admin/api/terms/7/status", "/api/admin/terms/7/status"],
+  for (const [pathname, internal] of [
+    ["/admin/api/queue", "/api/admin/queue"],
+    ["/admin/api/terms", "/api/admin/terms"],
+    ["/admin/api/review/7", "/api/admin/review/7"],
+    ["/admin/api/terms/7", "/api/admin/terms/7"],
+    ["/admin/api/terms/7/status", "/api/admin/terms/7/status"],
   ]) {
     assert.deepEqual(adminRoute(pathname), { type: "rewrite", pathname: internal });
   }
 });
 
 test("direct calls to the internal admin API redirect to /admin/api", () => {
-  for (const [method, pathname, target] of [
-    ["GET", "/api/admin/queue", "/admin/api/queue"],
-    ["POST", "/api/admin/review/7", "/admin/api/review/7"],
-    ["PUT", "/api/admin/terms/7", "/admin/api/terms/7"],
-    ["POST", "/api/admin/terms/7/status", "/admin/api/terms/7/status"],
+  for (const [pathname, target] of [
+    ["/api/admin/queue", "/admin/api/queue"],
+    ["/api/admin/review/7", "/admin/api/review/7"],
+    ["/api/admin/terms/7", "/admin/api/terms/7"],
+    ["/api/admin/terms/7/status", "/admin/api/terms/7/status"],
   ]) {
     assert.deepEqual(adminRoute(pathname), { type: "redirect", pathname: target });
   }
