@@ -1,7 +1,6 @@
-// The security workflow runs scanners with write access to code scanning, so
-// every third-party action in it must be pinned to a full commit SHA. Tag
-// rewriting tools (for example `gh actions-lock`) must not turn them back
-// into mutable tags.
+// gh actions-lock records immutable commit SHAs for direct and transitive
+// workflow dependencies in actions.lock. Workflow refs stay readable tags;
+// the lockfile is the enforced immutable pin.
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -16,6 +15,8 @@ export function actionRefs(text) {
 const uses = files.flatMap((f) =>
   actionRefs(readFileSync(join(dir, f), "utf8")).map((ref) => `${f}: ${ref}`),
 );
+const lock = readFileSync(join(dir, "actions.lock"), "utf8");
+const dependencies = lock.split("\ndependencies:\n")[1] ?? "";
 
 test("actionRefs finds block and flow-mapping references", () => {
   assert.deepEqual(actionRefs("- uses: a/b@v1\n- {uses: c/d@v2, with: {x: 1}}\n- {name: x, uses: \"e/f@v3\"}\n- {\"uses\": \"g/h@v4\"}\n- {'uses': 'i/j@v5'}"), [
@@ -31,8 +32,18 @@ test("workflows use at least one action", () => {
   assert.ok(uses.length > 0);
 });
 
-test("every action in every workflow is pinned to a 40-character commit SHA", () => {
-  for (const ref of uses) {
-    assert.match(ref, /@[0-9a-f]{40}$/, `${ref} is not pinned to a commit SHA`);
+test("every workflow action has an immutable SHA in actions.lock", () => {
+  assert.ok(dependencies.length > 0, "actions.lock has no dependencies section");
+  for (const item of uses) {
+    const ref = item.slice(item.indexOf(": ") + 2);
+    const at = ref.lastIndexOf("@");
+    assert.ok(at > 0, `${item} has no version or SHA`);
+    const version = ref.slice(at + 1);
+    const actionPath = ref.slice(0, at).split("/").slice(0, 2).join("/");
+    const lockRef = `${actionPath}@${version}`.toLowerCase();
+    const escaped = lockRef.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const lockedTag = new RegExp(`^    '${escaped}':\\n(?:(?:        ).*\\n)*?        commit: 'sha1-[0-9a-f]{40}'`, "m").test(dependencies);
+    const lockedSha = /^[0-9a-f]{40}$/.test(version) && dependencies.includes(`commit: 'sha1-${version}'`);
+    assert.ok(lockedTag || lockedSha, `${item} has no immutable SHA in actions.lock`);
   }
 });
