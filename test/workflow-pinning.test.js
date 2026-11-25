@@ -43,7 +43,7 @@ test("every workflow action has an immutable SHA in actions.lock", () => {
     const lockRef = `${actionPath}@${version}`.toLowerCase();
     const escaped = lockRef.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const lockedTag = new RegExp(`^    '${escaped}':\\n(?:(?:        ).*\\n)*?        commit: 'sha1-[0-9a-f]{40}'`, "m").test(dependencies);
-    const lockedSha = /^[0-9a-f]{40}$/.test(version) && dependencies.includes(`commit: 'sha1-${version}'`);
+    const lockedSha = /^[0-9a-f]{40}$/.test(version) && new RegExp(`^    '${escaped}':\\n(?:(?:        ).*\\n)*?        commit: 'sha1-${version}'`, "m").test(dependencies);
     assert.ok(lockedTag || lockedSha, `${item} has no immutable SHA in actions.lock`);
   }
 });
