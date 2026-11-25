@@ -16,6 +16,7 @@ const uses = files.flatMap((f) =>
   actionRefs(readFileSync(join(dir, f), "utf8")).map((ref) => `${f}: ${ref}`),
 );
 const lock = readFileSync(join(dir, "actions.lock"), "utf8");
+const workflows = lock.split("\nworkflows:\n")[1]?.split("\ndependencies:\n")[0] ?? "";
 const dependencies = lock.split("\ndependencies:\n")[1] ?? "";
 
 test("actionRefs finds block and flow-mapping references", () => {
@@ -30,6 +31,25 @@ test("actionRefs finds block and flow-mapping references", () => {
 
 test("workflows use at least one action", () => {
   assert.ok(uses.length > 0);
+});
+
+test("every workflow is onboarded with its own action list in actions.lock", () => {
+  for (const file of files) {
+    const refs = actionRefs(readFileSync(join(dir, file), "utf8")).filter(
+      (ref) => !ref.startsWith("./") && !ref.startsWith("$/"),
+    );
+    if (refs.length === 0) continue;
+    const entryStart = workflows.indexOf(`    '.github/workflows/${file}':\n`);
+    assert.notEqual(entryStart, -1, `${file} is not onboarded in actions.lock`);
+    const nextEntry = workflows.indexOf("\n    '", entryStart + 1);
+    const entry = workflows.slice(entryStart, nextEntry === -1 ? workflows.length : nextEntry);
+    for (const ref of refs) {
+      const at = ref.lastIndexOf("@");
+      const actionPath = ref.slice(0, at).split("/").slice(0, 2).join("/");
+      const lockRef = `${actionPath}${ref.slice(at)}`.toLowerCase();
+      assert.ok(entry.includes(`- '${lockRef}'`), `${file} does not list ${lockRef} in actions.lock`);
+    }
+  }
 });
 
 test("every workflow action has an immutable SHA in actions.lock", () => {
