@@ -1,5 +1,17 @@
-queue_rules:
-  - name: default
-    merge_method: squash
-    merge_conditions:
+# GitHub's native merge queue remains authoritative for main.
+# Mergify's merge queue is intentionally not configured here: the active
+# GitHub merge_queue ruleset blocks Mergify merges unless that ruleset is
+# deliberately migrated. Keep one queue responsible for merging.
+
+merge_protections:
+  - name: Plainword CI
+    description: Require the test suite to pass before merge.
+    if:
+      - base = main
+    success_conditions:
       - check-success = test
+
+merge_protections_settings:
+  post_comment: true
+  reporting_method: check-runs
+  # GitHub's native merge queue owns the merge decision.
