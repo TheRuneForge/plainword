@@ -54,9 +54,9 @@ jobs:
             (cd "$bun_package_dir" && node install.js)
           fi
       - run: bun install --frozen-lockfile
-      # The spec reporter keeps the console output; the JUnit report goes to Mergify.
+      # The spec reporter keeps the console output; tools/junit-reporter.mjs writes the JUnit report for Mergify.
       - id: tests
-        run: npm test -- --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=junit.xml
+        run: npm test -- --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./tools/junit-reporter.mjs --test-reporter-destination=junit.xml
       - run: sh tools/deploy.sh
         # Every name in cloudflare.example.env, read from the repository secrets.
         env:
