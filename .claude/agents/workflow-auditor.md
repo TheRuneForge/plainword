@@ -10,6 +10,7 @@ Audit `.github/workflows/*.yml` for:
 - Minimal `permissions:` per workflow and job
 - No untrusted input (PR titles, branch names) interpolated into `run:` steps
 - No secrets exposed to pull requests from forks
-- `actions.lock` consistent with the workflows (never hand-edited)
+- node tools/verify-action-pins.mjs passes for every external action reference
+- External action references use full commit SHAs with upstream version comments
 
 Report findings with file and line. Do not edit.
