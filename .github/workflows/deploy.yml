@@ -33,6 +33,9 @@ jobs:
     needs: configured
     if: needs.configured.outputs.ready == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Mergify Test Engine upload authenticates with the job's ID token
+      contents: read # actions/checkout
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -51,7 +54,9 @@ jobs:
             (cd "$bun_package_dir" && node install.js)
           fi
       - run: bun install --frozen-lockfile
-      - run: npm test
+      # The spec reporter keeps the console output; tools/junit-reporter.mjs writes the JUnit report for Mergify.
+      - id: tests
+        run: npm test -- --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./tools/junit-reporter.mjs --test-reporter-destination=junit.xml
       - run: sh tools/deploy.sh
         # Every name in cloudflare.example.env, read from the repository secrets.
         env:
@@ -67,3 +72,9 @@ jobs:
           THEME_COOKIE_DOMAIN: ${{ secrets.THEME_COOKIE_DOMAIN }}
           SITE_FAMILY: ${{ secrets.SITE_FAMILY }}
           RELATED_SITE_HTML: ${{ secrets.RELATED_SITE_HTML }}
+      # Uploads the JUnit report with the job's ID token; skipped on pull requests from forks, which get none.
+      - name: Mergify Test Engine Upload
+        if: (success() || failure()) && (!github.event.pull_request || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('junit.xml') != ''
+        env:
+          MERGIFY_TEST_EXIT_CODE: ${{ steps.tests.outcome == 'success' && '0' || '1' }}
+        run: pipx run --spec mergify-cli==2026.11.22 mergify ci junit-process junit.xml
