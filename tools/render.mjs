@@ -44,6 +44,27 @@ if (!valuesFile || !outArg) {
   process.exit(2);
 }
 const source = realpathSync(resolve(dirname(fileURLToPath(import.meta.url)), ".."));
+const resolveValuesFile = (candidate) => {
+  const path = realpathSync(resolve(candidate));
+  const roots = [source, process.cwd(), tmpdir()]
+    .map((root) => {
+      try {
+        return realpathSync(root);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+  const allowed = roots.some((root) => {
+    const rel = relative(root, path);
+    return rel === "" || (rel !== ".." && !rel.startsWith(".." + sep) && !isAbsolute(rel));
+  });
+  if (!allowed || !lstatSync(path).isFile()) {
+    throw new Error("values file must be an existing file inside the repository, working directory, or system temp directory");
+  }
+  return path;
+};
+
 
 // Read and check the values first: a missing file or value must not leave a
 // created or emptied directory behind.
@@ -55,7 +76,7 @@ const values =
           .filter((name) => name in process.env)
           .map((name) => [name, process.env[name].replace(/\\n/g, "\n")]),
       )
-    : parseEnv(valuesFile);
+    : parseEnv(resolveValuesFile(valuesFile));
 const missing = declared.filter((name) => !values.has(name));
 if (missing.length) {
   console.error(
