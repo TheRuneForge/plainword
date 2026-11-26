@@ -385,3 +385,6 @@ statusline.sh
 *.env
 !*.example.env
 /build/
+
+# JUnit report the CI test step writes for Mergify Test Engine
+junit.xml
